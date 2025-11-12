@@ -6,10 +6,9 @@
 #include <algorithm>
 #include <cmath>
 
-#include <nlohmann/json.hpp>
+#include "minijson.h"
 
 namespace fs = std::filesystem;
-using json = nlohmann::json;
 
 static float dot(const std::vector<float>& a, const std::vector<float>& b) {
     float s = 0.0f;
@@ -36,20 +35,17 @@ bool VectorStore::init_or_load(int embedding_dim, const std::string& embed_model
     if (fs::exists(meta_path_)) {
         std::ifstream in(meta_path_);
         if (in) {
-            json m; in >> m;
-            embedding_dim_ = m.value("embedding_dim", 0);
-            embed_model_name_ = m.value("embed_model", std::string(""));
+            std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            int dim = 0; std::string model;
+            if (minijson::extract_int(content, "embedding_dim", dim)) embedding_dim_ = dim;
+            if (minijson::extract_string(content, "embed_model", model)) embed_model_name_ = model;
         }
     }
     if (embedding_dim_ == 0) {
         embedding_dim_ = embedding_dim;
         embed_model_name_ = embed_model_name;
-        json m{
-            {"embedding_dim", embedding_dim_},
-            {"embed_model", embed_model_name_}
-        };
         std::ofstream out(meta_path_);
-        out << m.dump(2);
+        out << "{\"embedding_dim\":" << embedding_dim_ << ",\"embed_model\":\"" << minijson::escape(embed_model_name_) << "\"}";
     }
     return reload();
 }
@@ -62,17 +58,11 @@ bool VectorStore::reload() {
     std::string line;
     while (std::getline(in, line)) {
         if (line.empty()) continue;
-        json j = json::parse(line, nullptr, false);
-        if (j.is_discarded()) continue;
         DocumentChunk c;
-        c.id = j.value("id", std::string(""));
-        c.source = j.value("source", std::string(""));
-        c.text = j.value("text", std::string(""));
-        auto emb = j.find("embedding");
-        if (emb != j.end() && emb->is_array()) {
-            c.embedding.reserve(emb->size());
-            for (auto& v : *emb) c.embedding.push_back(v.get<float>());
-        }
+        minijson::extract_string(line, "id", c.id);
+        minijson::extract_string(line, "source", c.source);
+        minijson::extract_string(line, "text", c.text);
+        minijson::extract_float_array(line, "embedding", c.embedding);
         if ((int)c.embedding.size() == embedding_dim_) {
             items_.push_back(std::move(c));
         }
@@ -83,15 +73,17 @@ bool VectorStore::reload() {
 bool VectorStore::append(const DocumentChunk& c) {
     if ((int)c.embedding.size() != embedding_dim_) return false;
     // append to disk
-    json j{
-        {"id", c.id},
-        {"source", c.source},
-        {"text", c.text},
-        {"embedding", c.embedding}
-    };
     std::ofstream out(index_path_, std::ios::app);
     if (!out) return false;
-    out << j.dump() << "\n";
+    out << "{\"id\":\"" << minijson::escape(c.id) << "\",";
+    out << "\"source\":\"" << minijson::escape(c.source) << "\",";
+    out << "\"text\":\"" << minijson::escape(c.text) << "\",";
+    out << "\"embedding\":[";
+    for (size_t i = 0; i < c.embedding.size(); ++i) {
+        if (i) out << ",";
+        out << c.embedding[i];
+    }
+    out << "]}" << "\n";
     items_.push_back(c);
     return true;
 }

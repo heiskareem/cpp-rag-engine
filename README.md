@@ -2,8 +2,7 @@
 
 Minimal C++ RAG engine with:
 
-- Local LLM inference via `llama.cpp` (GGUF models)
-- Local embeddings via `llama.cpp` embedding models (e.g., nomic-embed-text)
+- Local LLM + embeddings via Ollama (no heavy compile)
 - Simple JSONL vector store (cosine similarity)
 - CLI for ingesting documents and querying with RAG
 
@@ -15,7 +14,8 @@ Prereqs:
 
 - CMake 3.20+
 - C++17 compiler (MSVC, Clang, or GCC)
-- Internet to fetch dependencies on first configure (llama.cpp, nlohmann/json)
+- curl installed (for HTTP calls)
+- Ollama running locally (WSL/Linux/Mac/Windows): https://ollama.com/download
 
 Commands:
 
@@ -26,30 +26,31 @@ cmake --build build --config Release --target rag
 
 Binary is at `build/rag` (or `build/Release/rag.exe` on Windows).
 
-## Models (free/local)
+## Models (via Ollama)
 
-- LLM: pick any instruct GGUF model:
-  - Llama 3.1 8B Instruct (Q4_K_M): good quality, more RAM/CPU
-  - Mistral 7B Instruct v0.2 (Q4_K_M): lighter
-  - Phi-3.5-mini-instruct (Q4_K_M): very light
-- Embeddings: GGUF embedding model for high‑quality vectors:
-  - `nomic-embed-text-v1.5` (GGUF)
-  - `bge-small` / `gte-small` in GGUF if preferred
+- LLM (examples): `phi3.5:mini`, `mistral:instruct`, `llama3.2:3b-instruct`
+- Embeddings: `nomic-embed-text`, `gte-small`
 
-Download GGUFs from Hugging Face. Place them somewhere on disk. You can change models any time via CLI flags.
+Pull models once:
+
+```
+ollama pull phi3.5:mini
+ollama pull mistral:instruct
+ollama pull nomic-embed-text
+```
 
 ## Quickstart
 
-1) Ingest a folder of `.txt`/`.md` files into a store:
+1) Ingest a folder of `.txt`/`.md` files into a store (uses Ollama embeddings):
 
 ```
-rag ingest --dir data/ --store .rag_store --embed-model C:\\models\\nomic-embed-text-v1.5.f16.gguf
+rag ingest --dir data/ --store .rag_store --embed-model nomic-embed-text
 ```
 
-2) Ask a question with RAG using your LLM model:
+2) Ask a question with RAG using your Ollama LLM:
 
 ```
-rag query --store .rag_store --llm-model C:\\models\\Mistral-7B-Instruct-v0.2.Q4_K_M.gguf \
+rag query --store .rag_store --llm-model phi3.5:mini \
           --question "What are the key points?" --k 5 --max-tokens 256
 ```
 
@@ -58,11 +59,11 @@ rag query --store .rag_store --llm-model C:\\models\\Mistral-7B-Instruct-v0.2.Q4
 - `ingest` — recursively index `.txt` and `.md`
   - `--dir <path>`: input directory
   - `--store <path>`: store directory (created if missing)
-  - `--embed-model <path>`: GGUF embedding model
+  - `--embed-model <name>`: Ollama embedding model (e.g., `nomic-embed-text`)
   - `--chunk-size <n>` (default 800), `--chunk-overlap <n>` (default 200)
-- `query` — retrieve + generate
+- `query` — retrieve + generate (via Ollama)
   - `--store <path>`: store directory
-  - `--llm-model <path>`: GGUF instruct model
+  - `--llm-model <name>`: Ollama model name (e.g., `phi3.5:mini`)
   - `--question <text>`: your question
   - `--k <n>` (default 4): top matches
   - `--max-tokens <n>` (default 256)
@@ -72,4 +73,5 @@ rag query --store .rag_store --llm-model C:\\models\\Mistral-7B-Instruct-v0.2.Q4
 
 - This is a lean baseline. For larger corpora, swap the vector store for HNSW/FAISS and add persistence.
 - PDF/HTML support not included; convert to `.txt` first.
-- CPU build by default. Enable GPU in `llama.cpp` options if desired.
+- Ensure `ollama` is running (`ollama serve` usually starts automatically).
+ - No CMake downloads: built‑in mini JSON replaces nlohmann/json; `build/` is disposable.

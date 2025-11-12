@@ -1,0 +1,8 @@
+# ninja log v5
+85	659	1762990882845002400	CMakeFiles/rag.dir/src/text_chunker.cpp.o	a198824ab15fc33
+78	726	1762990882880615900	CMakeFiles/rag.dir/src/minijson.cpp.o	36e809512ceea719
+93	916	1762990883103031700	CMakeFiles/rag.dir/src/io_utils.cpp.o	f9242650b1d6483e
+74	943	1762990883125085700	CMakeFiles/rag.dir/src/ollama_client.cpp.o	9bf1f48815656fad
+69	996	1762990883178029900	CMakeFiles/rag.dir/src/main.cpp.o	7f2d5f73d2a87f62
+81	1508	1762990883687315700	CMakeFiles/rag.dir/src/vector_store.cpp.o	775128c72116aec6
+1561	2182	1762990884358133200	rag	33051a16d49f5fa7
