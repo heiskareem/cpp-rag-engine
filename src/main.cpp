@@ -102,6 +102,10 @@ int main(int argc, char** argv) {
 
             OllamaClient oc;
             auto qvec = oc.embed(embed_model_path, question);
+            if (qvec.empty()) {
+                std::cerr << "Failed to get embeddings for the question. Ensure Ollama is running and the embedding model ('" << embed_model_path << "') is pulled.\n";
+                return 5;
+            }
             auto hits = vs.query(qvec, k);
             if (hits.empty()) {
                 std::cout << "No context found in store.\n"; return 0;
@@ -109,6 +113,10 @@ int main(int argc, char** argv) {
             auto prompt = build_rag_prompt(question, hits);
 
             auto answer = oc.generate(llm_model, prompt, max_tokens, temp);
+            if (answer.empty()) {
+                std::cerr << "No answer generated. Verify the LLM model ('" << llm_model << "') is available: try 'ollama pull " << llm_model << "' and test with 'ollama run " << llm_model << " \"hi\"'.\n";
+                return 6;
+            }
             std::cout << answer << "\n";
         } catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << "\n"; return 10;

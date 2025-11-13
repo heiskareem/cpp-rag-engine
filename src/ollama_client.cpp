@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include <filesystem>
+#include <iostream>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -87,7 +88,13 @@ std::vector<float> OllamaClient::embed(const std::string& model, const std::stri
     const std::string resp = run_curl_post_file(url("/api/embeddings"), tmp);
     if (resp.empty()) return {};
     std::vector<float> out;
-    if (!minijson::extract_float_array(resp, "embedding", out)) return {};
+    if (!minijson::extract_float_array(resp, "embedding", out)) {
+        std::string err;
+        if (minijson::extract_string(resp, "error", err)) {
+            std::cerr << "Ollama embeddings error: " << err << "\n";
+        }
+        return {};
+    }
     return out;
 }
 
@@ -102,5 +109,9 @@ std::string OllamaClient::generate(const std::string& model, const std::string& 
     if (resp.empty()) return {};
     std::string out;
     if (minijson::extract_string(resp, "response", out)) return out;
+    std::string err;
+    if (minijson::extract_string(resp, "error", err)) {
+        std::cerr << "Ollama generate error: " << err << "\n";
+    }
     return {};
 }
